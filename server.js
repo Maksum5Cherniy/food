@@ -158,14 +158,24 @@ async function initStorage() {
       recipesCol = db.collection("recipes");
       factTitlesCol = db.collection("fact-titles");
       // Upsert each initial recipe — adds missing ones, skips existing
+      const newlyAdded = [];
       for (const recipe of INITIAL_RECIPES) {
-        await recipesCol.updateOne(
+        const result = await recipesCol.updateOne(
           { id: recipe.id },
           { $setOnInsert: { ...recipe } },
           { upsert: true },
         );
+        if (result.upsertedCount > 0) {
+          newlyAdded.push(recipe);
+        }
       }
       console.log("MongoDB: initial recipes synced");
+      if (newlyAdded.length > 0) {
+        console.log(`Posting ${newlyAdded.length} new recipe(s) to Telegram...`);
+        for (const recipe of newlyAdded) {
+          await sendTelegramRecipePost(recipe);
+        }
+      }
       console.log("Storage: MongoDB connected");
     } catch (err) {
       console.error(
