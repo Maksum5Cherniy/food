@@ -11,5 +11,8 @@
     "type": "git",
     "url": "https://github.com/Maksum5Cherniy/food.git"
   },
-  "author": "Maksum5Cherniy"
+  "author": "Maksum5Cherniy",
+  "dependencies": {
+    "mongodb": "^6.5.0"
+  }
 }

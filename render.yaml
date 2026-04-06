@@ -12,4 +12,4 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         value: "<твій бот токен>"
       - key: TELEGRAM_CHAT_ID
-        value: "@footvotl_bot"
+        value: "@food_volt"
