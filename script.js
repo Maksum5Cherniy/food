@@ -142,45 +142,44 @@ function formatDescription(text) {
 }
 
 function formatDescriptionHTML(text) {
-  let normalized = text.trim();
-  normalized = normalized.replace(/^Опис:\s*/i, "");
-  normalized = normalized.replace(
-    /\s+(Тісто:|Білкова глазур:|Декор|Яйце\b)/gi,
-    "\n$1",
-  );
-  normalized = normalized.replace(/Інгредієнти\s*/gi, "\nІнгредієнти\n");
-  const lines = normalized
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  if (!text) return "";
+  const normalized = text.trim().replace(/^Опис:\s*/i, "");
+  const lines = normalized.split("\n").map((l) => l.trim());
 
-  const blocks = [];
-  let currentBlock = [];
-  lines.forEach((line) => {
-    if (/^(Інгредієнти|Тісто:|Білкова глазур:|Декор|Яйце)/i.test(line)) {
-      if (currentBlock.length) {
-        blocks.push(currentBlock.join(" "));
-      }
-      currentBlock = [line];
-    } else {
-      currentBlock.push(line);
+  const HEADER_RE =
+    /^(Інгредієнти|Тісто|Начинка|Соус|Глазур|Декор|Крем|Приготування|Спосіб приготування)[:.]?\s*$/i;
+
+  let html = "";
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line) {
+      i++;
+      continue;
     }
-  });
-  if (currentBlock.length) {
-    blocks.push(currentBlock.join(" "));
-  }
-
-  return blocks
-    .map((block) => {
-      const headerMatch = block.match(
-        /^(Інгредієнти|Тісто:|Білкова глазур:|Декор|Яйце)/i,
-      );
-      if (headerMatch) {
-        return `<div class="recipe-section"><p class="recipe-section-title">${escapeHtml(headerMatch[1])}</p><p>${escapeHtml(block.slice(headerMatch[1].length).trim())}</p></div>`;
+    if (HEADER_RE.test(line)) {
+      html += `<p class="recipe-section-title">${escapeHtml(line.replace(/[:.]$/, ""))}</p>`;
+      i++;
+    } else if (/^\d+[.)]\s/.test(line)) {
+      html += '<ol class="recipe-steps">';
+      while (i < lines.length && /^\d+[.)]\s/.test(lines[i])) {
+        html += `<li>${escapeHtml(lines[i].replace(/^\d+[.)]\s/, ""))}</li>`;
+        i++;
       }
-      return `<p>${escapeHtml(block)}</p>`;
-    })
-    .join("");
+      html += "</ol>";
+    } else if (/^[-•–]\s/.test(line)) {
+      html += '<ul class="recipe-ingredients">';
+      while (i < lines.length && lines[i] && /^[-•–]\s/.test(lines[i])) {
+        html += `<li>${escapeHtml(lines[i].replace(/^[-•–]\s/, ""))}</li>`;
+        i++;
+      }
+      html += "</ul>";
+    } else {
+      html += `<p>${escapeHtml(line)}</p>`;
+      i++;
+    }
+  }
+  return html;
 }
 
 function renderRecipes() {
@@ -340,7 +339,10 @@ async function saveCurrentRecipe() {
   const payload = { title, description, time, image };
   try {
     if (editingId) {
-      const updatedRecipe = await updateRecipeOnServer({ id: editingId, ...payload });
+      const updatedRecipe = await updateRecipeOnServer({
+        id: editingId,
+        ...payload,
+      });
       recipes = recipes.map((recipe) =>
         recipe.id === editingId ? updatedRecipe : recipe,
       );
@@ -355,7 +357,9 @@ async function saveCurrentRecipe() {
     resetEditor();
   } catch (error) {
     console.error("Помилка збереження:", error);
-    alert("Не вдалося зберегти рецепт. Сервер не відповідає — зачекайте кілька секунд і спробуйте ще раз.");
+    alert(
+      "Не вдалося зберегти рецепт. Сервер не відповідає — зачекайте кілька секунд і спробуйте ще раз.",
+    );
   }
 }
 
@@ -472,4 +476,3 @@ window.addEventListener("load", async () => {
     });
   }
 });
-

@@ -281,8 +281,21 @@ textarea {
 }
 
 .recipe-section-title {
-  margin: 0 0 0.5rem;
+  margin: 0.6rem 0 0.3rem;
   font-weight: 700;
+  color: var(--text-primary, #222);
+}
+
+.recipe-description-full ul.recipe-ingredients,
+.recipe-description-full ol.recipe-steps {
+  margin: 0 0 0.6rem 1.3rem;
+  padding: 0;
+}
+
+.recipe-description-full ul.recipe-ingredients li,
+.recipe-description-full ol.recipe-steps li {
+  margin-bottom: 0.3rem;
+  line-height: 1.55;
 }
 
 .toggle-description {
