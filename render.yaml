@@ -5,6 +5,7 @@ services:
     branch: main
     buildCommand: npm install
     startCommand: npm start
+    nodeVersion: 20
     plan: free
     envVars:
       - key: NODE_ENV

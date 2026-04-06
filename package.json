@@ -12,6 +12,9 @@
     "url": "https://github.com/Maksum5Cherniy/food.git"
   },
   "author": "Maksum5Cherniy",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "mongodb": "^6.5.0",
     "node-cron": "^4.2.1"
