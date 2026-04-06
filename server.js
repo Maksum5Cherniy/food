@@ -36,23 +36,29 @@ const INITIAL_RECIPES = [
   {
     id: "borsch",
     title: "Борщ зі сметаною",
-    description: "Ніжний український борщ з буряком, капустою, картоплею та ароматною сметаною.",
+    description:
+      "Ніжний український борщ з буряком, капустою, картоплею та ароматною сметаною.",
     time: "60 хв",
-    image: "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80",
   },
   {
     id: "pasta",
     title: "Паста з помідорами і базиліком",
-    description: "Швидкий та яскравий рецепт для обіду: італійська паста з оливковою олією та свіжими травами.",
+    description:
+      "Швидкий та яскравий рецепт для обіду: італійська паста з оливковою олією та свіжими травами.",
     time: "25 хв",
-    image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80",
   },
   {
     id: "salad",
     title: "Салат з кіноа і авокадо",
-    description: "Легкий, корисний салат з кіноа, авокадо, помідорами та лимонною заправкою.",
+    description:
+      "Легкий, корисний салат з кіноа, авокадо, помідорами та лимонною заправкою.",
     time: "20 хв",
-    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
   },
 ];
 
@@ -73,7 +79,10 @@ async function initStorage() {
       }
       console.log("Storage: MongoDB connected");
     } catch (err) {
-      console.error("MongoDB connection failed, falling back to file:", err.message);
+      console.error(
+        "MongoDB connection failed, falling back to file:",
+        err.message,
+      );
       recipesCol = null;
       ensureDataFile();
     }
@@ -88,7 +97,11 @@ function ensureDataFile() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(INITIAL_RECIPES, null, 2), "utf8");
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify(INITIAL_RECIPES, null, 2),
+      "utf8",
+    );
   }
 }
 
@@ -117,7 +130,10 @@ async function createRecipe(recipe) {
 
 async function updateRecipe(id, payload) {
   if (recipesCol) {
-    const existing = await recipesCol.findOne({ id }, { projection: { _id: 0 } });
+    const existing = await recipesCol.findOne(
+      { id },
+      { projection: { _id: 0 } },
+    );
     if (!existing) return null;
     const updated = {
       id,
@@ -160,28 +176,56 @@ function sendResponse(res, status, body, type = "text/plain") {
   res.end(body);
 }
 
-async function sendTelegramMessage(text, buttonUrl = null) {
+async function sendTelegramRecipePost(recipe) {
   if (!TELEGRAM_BASE_URL || !TELEGRAM_CHAT_ID) {
     console.log("Telegram not configured: missing token or chat_id");
     return;
   }
-  const body = {
-    chat_id: TELEGRAM_CHAT_ID,
-    text,
-    parse_mode: "HTML",
-    disable_web_page_preview: true,
-  };
-  if (buttonUrl) {
-    body.reply_markup = {
-      inline_keyboard: [[{ text: "Переглянути рецепт", url: buttonUrl }]],
-    };
-  }
+
+  const safeText = (value) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const description = safeText(recipe.description || "");
+  const shortDescription =
+    description.length > 400 ? `${description.slice(0, 400)}...` : description;
+
+  const caption =
+    `<b>${safeText(recipe.title)}</b>\n` +
+    `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
+    `${shortDescription}\n\n` +
+    `<a href="${SITE_URL}">Наш сайт</a>`;
+
+  const imageUrl =
+    recipe.image && recipe.image.startsWith("http") ? recipe.image : null;
+
   try {
-    const response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let response;
+    if (imageUrl) {
+      response = await fetch(`${TELEGRAM_BASE_URL}/sendPhoto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          photo: imageUrl,
+          caption,
+          parse_mode: "HTML",
+        }),
+      });
+    } else {
+      response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: caption,
+          parse_mode: "HTML",
+          disable_web_page_preview: false,
+        }),
+      });
+    }
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Telegram send failed: ${response.status} ${errorText}`);
@@ -191,23 +235,6 @@ async function sendTelegramMessage(text, buttonUrl = null) {
   } catch (error) {
     console.error("Telegram notification error:", error);
   }
-}
-
-function formatTelegramRecipe(recipe, action = "Новий") {
-  const safeText = (value) =>
-    String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  const description = safeText(recipe.description || "");
-  const shortDescription =
-    description.length > 400 ? `${description.slice(0, 400)}...` : description;
-  return (
-    `🔔 <b>${action} рецепт</b>\n\n` +
-    `<b>Назва:</b> ${safeText(recipe.title)}\n` +
-    `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
-    `<b>Опис:</b> ${shortDescription}`
-  );
 }
 
 function serveStaticFile(req, res) {
@@ -237,10 +264,15 @@ function serveStaticFile(req, res) {
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
-    req.on("data", (chunk) => { body += chunk; });
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
     req.on("end", () => {
-      try { resolve(JSON.parse(body || "{}")); }
-      catch (error) { reject(error); }
+      try {
+        resolve(JSON.parse(body || "{}"));
+      } catch (error) {
+        reject(error);
+      }
     });
     req.on("error", reject);
   });
@@ -256,7 +288,12 @@ async function handleApi(req, res) {
       const recipes = await readRecipes();
       sendResponse(res, 200, JSON.stringify(recipes), "application/json");
     } catch {
-      sendResponse(res, 500, JSON.stringify({ error: "Помилка сервера" }), "application/json");
+      sendResponse(
+        res,
+        500,
+        JSON.stringify({ error: "Помилка сервера" }),
+        "application/json",
+      );
     }
     return;
   }
@@ -274,10 +311,14 @@ async function handleApi(req, res) {
       };
       await createRecipe(recipe);
       sendResponse(res, 201, JSON.stringify(recipe), "application/json");
-      const recipeUrl = `${SITE_URL}#${encodeURIComponent(recipe.id)}`;
-      await sendTelegramMessage(formatTelegramRecipe(recipe, "Новий"), recipeUrl);
+      await sendTelegramRecipePost(recipe);
     } catch {
-      sendResponse(res, 400, JSON.stringify({ error: "Невірні дані" }), "application/json");
+      sendResponse(
+        res,
+        400,
+        JSON.stringify({ error: "Невірні дані" }),
+        "application/json",
+      );
     }
     return;
   }
@@ -288,14 +329,23 @@ async function handleApi(req, res) {
       const payload = await parseBody(req);
       const updated = await updateRecipe(id, payload);
       if (!updated) {
-        sendResponse(res, 404, JSON.stringify({ error: "Рецепт не знайдено" }), "application/json");
+        sendResponse(
+          res,
+          404,
+          JSON.stringify({ error: "Рецепт не знайдено" }),
+          "application/json",
+        );
         return;
       }
       sendResponse(res, 200, JSON.stringify(updated), "application/json");
-      const recipeUrl = `${SITE_URL}#${encodeURIComponent(updated.id)}`;
-      await sendTelegramMessage(formatTelegramRecipe(updated, "Оновлено"), recipeUrl);
+      await sendTelegramRecipePost(updated);
     } catch {
-      sendResponse(res, 400, JSON.stringify({ error: "Невірні дані" }), "application/json");
+      sendResponse(
+        res,
+        400,
+        JSON.stringify({ error: "Невірні дані" }),
+        "application/json",
+      );
     }
     return;
   }
@@ -305,17 +355,37 @@ async function handleApi(req, res) {
     try {
       const deleted = await deleteRecipe(id);
       if (!deleted) {
-        sendResponse(res, 404, JSON.stringify({ error: "Рецепт не знайдено" }), "application/json");
+        sendResponse(
+          res,
+          404,
+          JSON.stringify({ error: "Рецепт не знайдено" }),
+          "application/json",
+        );
         return;
       }
-      sendResponse(res, 200, JSON.stringify({ success: true }), "application/json");
+      sendResponse(
+        res,
+        200,
+        JSON.stringify({ success: true }),
+        "application/json",
+      );
     } catch {
-      sendResponse(res, 500, JSON.stringify({ error: "Помилка сервера" }), "application/json");
+      sendResponse(
+        res,
+        500,
+        JSON.stringify({ error: "Помилка сервера" }),
+        "application/json",
+      );
     }
     return;
   }
 
-  sendResponse(res, 404, JSON.stringify({ error: "Не знайдено" }), "application/json");
+  sendResponse(
+    res,
+    404,
+    JSON.stringify({ error: "Не знайдено" }),
+    "application/json",
+  );
 }
 
 initStorage().then(() => {
