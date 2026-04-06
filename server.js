@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const url = require("url");
 const cron = require("node-cron");
-const { getNextFact } = require("./facts");
+const { generateFoodFact } = require("./gemini-facts");
 
 const PORT = process.env.PORT || 8000;
 const ROOT = __dirname;
@@ -65,6 +65,7 @@ const INITIAL_RECIPES = [
 ];
 
 let recipesCol = null;
+let factTitlesCol = null;
 
 async function initStorage() {
   if (MONGODB_URI) {
@@ -74,6 +75,7 @@ async function initStorage() {
       await client.connect();
       const db = client.db("recipe-site");
       recipesCol = db.collection("recipes");
+      factTitlesCol = db.collection("fact-titles");
       const count = await recipesCol.countDocuments();
       if (count === 0) {
         await recipesCol.insertMany(INITIAL_RECIPES.map((r) => ({ ...r })));
@@ -500,10 +502,37 @@ async function handleApi(req, res) {
 }
 
 initStorage().then(() => {
+  async function loadUsedFactTitles() {
+    if (factTitlesCol) {
+      const docs = await factTitlesCol
+        .find({}, { projection: { _id: 0, title: 1 } })
+        .toArray();
+      return docs.map((d) => d.title);
+    }
+    const filePath = path.join(DATA_DIR, "used-fact-titles.json");
+    try {
+      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    } catch {
+      return [];
+    }
+  }
+
+  async function saveUsedFactTitle(title) {
+    if (factTitlesCol) {
+      await factTitlesCol.insertOne({ title, addedAt: new Date() });
+      return;
+    }
+    const filePath = path.join(DATA_DIR, "used-fact-titles.json");
+    const titles = await loadUsedFactTitles();
+    titles.push(title);
+    fs.writeFileSync(filePath, JSON.stringify(titles, null, 2), "utf8");
+  }
+
   // Щоденні пости з цікавими фактами про їжу (09:00 і 19:00 за Києвом)
   async function postDailyFact() {
     if (!TELEGRAM_BASE_URL || !TELEGRAM_CHAT_ID) return;
-    const fact = getNextFact();
+    const usedTitles = await loadUsedFactTitles();
+    const fact = await generateFoodFact(usedTitles);
     const text =
       `${fact.emoji} <b>${fact.title}</b>\n\n` +
       `${fact.text}\n\n` +
@@ -521,6 +550,7 @@ initStorage().then(() => {
       });
       if (response.ok) {
         console.log(`Daily fact posted: ${fact.title}`);
+        await saveUsedFactTitle(fact.title);
       } else {
         const err = await response.text();
         console.error(`Daily fact failed: ${err}`);
