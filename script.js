@@ -188,6 +188,7 @@ function renderRecipes() {
   recipes.forEach((recipe) => {
     const card = document.createElement("article");
     card.className = "recipe-card";
+    card.id = recipe.id;
 
     const image = document.createElement("img");
     image.src = recipe.image;

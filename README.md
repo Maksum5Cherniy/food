@@ -27,6 +27,8 @@ http://localhost:8000
 4. Додай `Persistent Disk`
 5. Додай environment variable:
    - `RECIPE_DATA_DIR=/data`
+   - `TELEGRAM_BOT_TOKEN` = твій токен бота
+   - `TELEGRAM_CHAT_ID` = `@food_volt`
 
 ## Як працює збереження рецептів
 
