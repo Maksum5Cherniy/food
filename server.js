@@ -39,28 +39,82 @@ const INITIAL_RECIPES = [
     id: "borsch",
     title: "Борщ зі сметаною",
     description:
-      "Ніжний український борщ з буряком, капустою, картоплею та ароматною сметаною.",
+      "Класичний червоний борщ з буряком, капустою, квасолею, картоплею та ароматною сметаною. Подається гарячим з пампушками або чорним хлібом.",
     time: "60 хв",
     image:
-      "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "pasta",
-    title: "Паста з помідорами і базиліком",
+    id: "vareniki",
+    title: "Вареники з картоплею та цибулею",
     description:
-      "Швидкий та яскравий рецепт для обіду: італійська паста з оливковою олією та свіжими травами.",
-    time: "25 хв",
+      "Ніжні домашні вареники з картопляно-цибулевою начинкою. Подаються зі смаженою цибулею та сметаною. Традиційна українська страва для всієї родини.",
+    time: "90 хв",
     image:
-      "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "salad",
-    title: "Салат з кіноа і авокадо",
+    id: "deruny",
+    title: "Деруни зі сметаною",
     description:
-      "Легкий, корисний салат з кіноа, авокадо, помідорами та лимонною заправкою.",
-    time: "20 хв",
+      "Хрусткі картопляні деруни, смажені до золотистої скоринки на олії. Подаються гарячими зі сметаною або грибним соусом. Улюблений сніданок або вечеря.",
+    time: "40 хв",
     image:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "holubtsi",
+    title: "Голубці в томатному соусі",
+    description:
+      "Соковиті голубці з фаршем і рисом, загорнуті у свіже капустяне листя та тушковані в ніжному томатному соусі зі сметаною.",
+    time: "120 хв",
+    image:
+      "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "nalisnyky",
+    title: "Налисники з сиром",
+    description:
+      "Тоненькі млинці-налисники з ніжною начинкою з сиру, яєць та цукру. Запікаються в духовці зі сметаною до апетитної рум'яноcті.",
+    time: "50 хв",
+    image:
+      "https://images.unsplash.com/photo-1484723091739-30990a23e4d7?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "pampushky",
+    title: "Пампушки з часниковою олією",
+    description:
+      "М'які пухкі пампушки з дріжджового тіста, политі ароматною часниковою олією з кропом. Ідеальне доповнення до борщу або самостійна закуска.",
+    time: "120 хв",
+    image:
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "hrechka",
+    title: "Гречана каша з грибами",
+    description:
+      "Розсипчаста гречана каша, тушкована з лісовими грибами, цибулею і морквою. Ситна і корисна страва, яку готували ще наші бабусі.",
+    time: "35 хв",
+    image:
+      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "kyiv-kotleta",
+    title: "Котлета по-київськи",
+    description:
+      "Соковита куряча котлета з вершковим маслом і зеленню всередині, паніровані і смажені до золотистої скоринки. Ресторанна класика рідного краю.",
+    time: "60 хв",
+    image:
+      "https://images.unsplash.com/photo-1562802378-063ec186a863?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "yushka",
+    title: "Юшка рибна з карасем",
+    description:
+      "Запашна домашня юшка з карасем, картоплею, цибулею та зеленню. Варена на повільному вогні, зберігає весь смак свіжої річкової риби.",
+    time: "50 хв",
+    image:
+      "https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?auto=format&fit=crop&w=800&q=80",
   },
 ];
 
@@ -76,11 +130,15 @@ async function initStorage() {
       const db = client.db("recipe-site");
       recipesCol = db.collection("recipes");
       factTitlesCol = db.collection("fact-titles");
-      const count = await recipesCol.countDocuments();
-      if (count === 0) {
-        await recipesCol.insertMany(INITIAL_RECIPES.map((r) => ({ ...r })));
-        console.log("MongoDB: seeded initial recipes");
+      // Upsert each initial recipe — adds missing ones, skips existing
+      for (const recipe of INITIAL_RECIPES) {
+        await recipesCol.updateOne(
+          { id: recipe.id },
+          { $setOnInsert: { ...recipe } },
+          { upsert: true },
+        );
       }
+      console.log("MongoDB: initial recipes synced");
       console.log("Storage: MongoDB connected");
     } catch (err) {
       console.error(
