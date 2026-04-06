@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Рецепти смачних страв. Адаптивний сайт з режимом адміністратора для редагування контенту без перезапису файлів." />
+  <title>Рецепти на всі випадки</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="brand">
+        <a href="https://uk.wikipedia.org/wiki/Калина" class="logo" aria-label="Калина" target="_blank" rel="noreferrer noopener">🍒</a>
+        <div>
+          <h1>Рецепти на всі випадки</h1>
+          <p>Прості і смачні ідеї для будь-якого приготування</p>
+        </div>
+      </div>
+      <button id="adminToggle" class="admin-button" aria-haspopup="dialog">Адмін</button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <h2>Смачно, швидко та надихаюче кожного дня</h2>
+          <p>Знайдіть рецепти, які подарують вам радість готування та стануть улюбленою частиною вашої кухні.</p>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-header">
+          <h3>Улюблені рецепти</h3>
+          <p>Нехай смакують нові страви</p>
+        </div>
+        <div id="recipeList" class="recipe-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Смачні рецепти для кожного дня.</p>
+    </footer>
+  </div>
+
+  <dialog id="adminDialog" class="modal" aria-modal="true">
+    <form id="adminForm" method="dialog">
+      <h3>Панель адміністратора</h3>
+      <div class="form-row">
+        <label for="adminPassword">Пароль адміністратора</label>
+        <input id="adminPassword" type="password" name="password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="button button-primary">Увійти</button>
+      <button type="button" id="adminClose" class="button button-secondary">Закрити</button>
+    </form>
+
+    <div id="editorArea" class="admin-area hidden">
+      <div class="editor-header">
+        <h4>Керування рецептами</h4>
+        <button id="adminLogout" class="button button-secondary">Вийти</button>
+      </div>
+      <div class="form-row">
+        <label for="recipeTitle">Назва страви</label>
+        <input id="recipeTitle" type="text" placeholder="Наприклад, Борщ" />
+      </div>
+      <div class="form-row">
+        <label for="recipeDescription">Опис</label>
+        <textarea id="recipeDescription" rows="4" placeholder="Короткий опис та інгредієнти"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="recipeTime">Час приготування</label>
+        <input id="recipeTime" type="text" placeholder="Наприклад, 45 хв" />
+      </div>
+      <div class="form-row">
+        <label for="recipeImage">Завантажити фото страви</label>
+        <input id="recipeImage" type="file" accept="image/*" />
+      </div>
+      <div class="form-row">
+        <label>Попередній перегляд фото</label>
+        <div id="recipeImagePreview" class="image-preview hidden" aria-live="polite"></div>
+      </div>
+      <div class="admin-actions">
+        <button id="saveRecipe" class="button button-primary">Зберегти рецепт</button>
+        <button id="clearRecipe" class="button button-secondary" type="button">Очистити поля</button>
+      </div>
+      <div class="recipe-manager">
+        <h5>Існуючі рецепти</h5>
+        <ul id="adminRecipeList" class="admin-list"></ul>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

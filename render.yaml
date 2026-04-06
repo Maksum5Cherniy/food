@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: recipe-site
+    env: node
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production

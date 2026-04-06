@@ -1,0 +1,9 @@
+{
+  "name": "Рецепти на всі випадки",
+  "short_name": "Рецепти",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#faf7f1",
+  "theme_color": "#ff8f4c",
+  "description": "Адаптивний сайт рецептiв з можливістю редагування для адмiнiстраторiв."
+}

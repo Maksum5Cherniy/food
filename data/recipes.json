@@ -1,0 +1,23 @@
+[
+  {
+    "id": "borsch",
+    "title": "Борщ зі сметаною",
+    "description": "Ніжний український борщ з буряком, капустою, картоплею та ароматною сметаною.",
+    "time": "60 хв",
+    "image": "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "pasta",
+    "title": "Паста з помідорами і базиліком",
+    "description": "Швидкий та яскравий рецепт для обіду: італійська паста з оливковою олією та свіжими травами.",
+    "time": "25 хв",
+    "image": "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "salad",
+    "title": "Салат з кіноа і авокадо",
+    "description": "Легкий, корисний салат з кіноа, авокадо, помідорами та лимонною заправкою.",
+    "time": "20 хв",
+    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80"
+  }
+]
