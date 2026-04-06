@@ -1,4 +1,4 @@
-const CACHE_NAME = "recipe-site-v2";
+const CACHE_NAME = "recipe-site-v3";
 const ASSETS = ["/index.html", "/styles.css", "/script.js", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -25,6 +25,12 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  // API запити ніколи не кешуємо — завжди йдемо в мережу
+  if (event.request.url.includes("/api/")) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
