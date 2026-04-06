@@ -1,4 +1,4 @@
-const ADMIN_PASSWORD = "adminfood";
+﻿const ADMIN_PASSWORD = "adminfood";
 const STORAGE_KEY = "recipeSiteContent";
 const defaultRecipes = [
   {
@@ -337,59 +337,25 @@ async function saveCurrentRecipe() {
   }
 
   const payload = { title, description, time, image };
-  if (editingId) {
-    if (serverOnline) {
-      try {
-        const updatedRecipe = await updateRecipeOnServer({
-          id: editingId,
-          ...payload,
-        });
-        recipes = recipes.map((recipe) =>
-          recipe.id === editingId ? updatedRecipe : recipe,
-        );
-        saveRecipes(recipes);
-        renderRecipes();
-        renderAdminList();
-        resetEditor();
-        return;
-      } catch (error) {
-        console.warn("Не вдалося оновити рецепт на сервері", error);
-        serverOnline = false;
-      }
+  try {
+    if (editingId) {
+      const updatedRecipe = await updateRecipeOnServer({ id: editingId, ...payload });
+      recipes = recipes.map((recipe) =>
+        recipe.id === editingId ? updatedRecipe : recipe,
+      );
+    } else {
+      const createdRecipe = await createRecipeOnServer(payload);
+      recipes.push(createdRecipe);
     }
-    recipes = recipes.map((recipe) =>
-      recipe.id === editingId
-        ? { ...recipe, title, description, time, image }
-        : recipe,
-    );
-  } else {
-    if (serverOnline) {
-      try {
-        const createdRecipe = await createRecipeOnServer(payload);
-        recipes.push(createdRecipe);
-        saveRecipes(recipes);
-        renderRecipes();
-        renderAdminList();
-        resetEditor();
-        return;
-      } catch (error) {
-        console.warn("Не вдалося додати рецепт на сервері", error);
-        serverOnline = false;
-      }
-    }
-    recipes.push({
-      id: `recipe-${Date.now()}`,
-      title,
-      description,
-      time,
-      image,
-    });
+    serverOnline = true;
+    saveRecipes(recipes);
+    renderRecipes();
+    renderAdminList();
+    resetEditor();
+  } catch (error) {
+    console.error("Помилка збереження:", error);
+    alert("Не вдалося зберегти рецепт. Сервер не відповідає — зачекайте кілька секунд і спробуйте ще раз.");
   }
-
-  saveRecipes(recipes);
-  renderRecipes();
-  renderAdminList();
-  resetEditor();
 }
 
 recipeList.addEventListener("click", (event) => {
@@ -505,3 +471,4 @@ window.addEventListener("load", async () => {
     });
   }
 });
+
