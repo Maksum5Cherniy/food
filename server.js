@@ -2,6 +2,8 @@
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
+const cron = require("node-cron");
+const { getNextFact } = require("./facts");
 
 const PORT = process.env.PORT || 8000;
 const ROOT = __dirname;
@@ -498,6 +500,42 @@ async function handleApi(req, res) {
 }
 
 initStorage().then(() => {
+  // Щоденні пости з цікавими фактами про їжу (09:00 і 19:00 за Києвом)
+  async function postDailyFact() {
+    if (!TELEGRAM_BASE_URL || !TELEGRAM_CHAT_ID) return;
+    const fact = getNextFact();
+    const text =
+      `${fact.emoji} <b>${fact.title}</b>\n\n` +
+      `${fact.text}\n\n` +
+      `<a href="${SITE_URL}">🍽 Наш сайт з рецептами</a>`;
+    try {
+      const response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        }),
+      });
+      if (response.ok) {
+        console.log(`Daily fact posted: ${fact.title}`);
+      } else {
+        const err = await response.text();
+        console.error(`Daily fact failed: ${err}`);
+      }
+    } catch (error) {
+      console.error("Daily fact error:", error);
+    }
+  }
+
+  // 09:00 Києв (UTC+3 = 06:00 UTC)
+  cron.schedule("0 6 * * *", postDailyFact, { timezone: "Europe/Kyiv" });
+  // 19:00 Києв (UTC+3 = 16:00 UTC)
+  cron.schedule("0 19 * * *", postDailyFact, { timezone: "Europe/Kyiv" });
+  console.log("Daily fact scheduler started (09:00 and 19:00 Kyiv time)");
+
   const server = http.createServer((req, res) => {
     if (req.url.startsWith("/api/recipes")) {
       handleApi(req, res);

@@ -13,6 +13,7 @@
   },
   "author": "Maksum5Cherniy",
   "dependencies": {
-    "mongodb": "^6.5.0"
+    "mongodb": "^6.5.0",
+    "node-cron": "^4.2.1"
   }
 }
