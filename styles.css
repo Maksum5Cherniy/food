@@ -245,6 +245,8 @@ textarea {
   line-height: 1.55;
   font-size: 0.9rem;
   color: var(--text-muted);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .recipe-description-full {
@@ -257,6 +259,8 @@ textarea {
   max-height: 320px;
   overflow-y: auto;
   scrollbar-width: thin;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .recipe-description-full::-webkit-scrollbar {
