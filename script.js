@@ -196,6 +196,7 @@ function renderRecipes() {
     image.loading = "lazy";
 
     const content = document.createElement("div");
+    content.className = "recipe-card-body";
     const title = document.createElement("h4");
     title.textContent = recipe.title;
 
