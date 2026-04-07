@@ -321,6 +321,73 @@ async function saveTelegramMessageId(recipeId, messageId) {
   }
 }
 
+async function getTelegramTextMessageId(recipeId) {
+  if (recipesCol) {
+    const doc = await recipesCol.findOne(
+      { id: recipeId },
+      { projection: { telegramTextMessageId: 1 } },
+    );
+    return doc?.telegramTextMessageId || null;
+  }
+  const recipes = await readRecipes();
+  const recipe = recipes.find((r) => r.id === recipeId);
+  return recipe?.telegramTextMessageId || null;
+}
+
+async function saveTelegramTextMessageId(recipeId, messageId) {
+  if (recipesCol) {
+    await recipesCol.updateOne(
+      { id: recipeId },
+      { $set: { telegramTextMessageId: messageId } },
+    );
+    return;
+  }
+  const recipes = await readRecipes();
+  const index = recipes.findIndex((r) => r.id === recipeId);
+  if (index !== -1) {
+    recipes[index].telegramTextMessageId = messageId;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(recipes, null, 2), "utf8");
+  }
+}
+
+function formatDescriptionForTelegram(description) {
+  if (!description) return "";
+  const SECTION_HEADERS = [
+    "Інгредієнти",
+    "Тісто",
+    "Начинка",
+    "Соус",
+    "Глазур",
+    "Декор",
+    "Крем",
+    "Приготування",
+    "Подача",
+  ];
+  const safe = (t) =>
+    String(t || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  const lines = description.split("\n");
+  const result = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      result.push("");
+      continue;
+    }
+    const isHeader = SECTION_HEADERS.some(
+      (h) => trimmed === h + ":" || trimmed === h,
+    );
+    result.push(isHeader ? `<b>${safe(trimmed)}</b>` : safe(trimmed));
+  }
+  const text = result
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text.length > 4000 ? text.slice(0, 4000) + "..." : text;
+}
+
 async function sendTelegramRecipePost(recipe) {
   if (!TELEGRAM_BASE_URL || !TELEGRAM_CHAT_ID) {
     console.log("Telegram not configured: missing token or chat_id");
@@ -333,23 +400,19 @@ async function sendTelegramRecipePost(recipe) {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-  const description = safeText(recipe.description || "");
-  const shortDescription =
-    description.length > 400 ? `${description.slice(0, 400)}...` : description;
-
   const caption =
     `<b>${safeText(recipe.title)}</b>\n` +
     `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
-    `${shortDescription}\n\n` +
-    `<a href="${SITE_URL}">Наш сайт</a>`;
+    `<a href="${SITE_URL}">🌐 Наш сайт</a>`;
 
   const imageUrl =
     recipe.image && recipe.image.startsWith("http") ? recipe.image : null;
 
   try {
-    let response;
+    let photoMessageId = null;
+
     if (imageUrl) {
-      response = await fetch(`${TELEGRAM_BASE_URL}/sendPhoto`, {
+      const response = await fetch(`${TELEGRAM_BASE_URL}/sendPhoto`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -359,27 +422,70 @@ async function sendTelegramRecipePost(recipe) {
           parse_mode: "HTML",
         }),
       });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `Telegram sendPhoto failed: ${response.status} ${errorText}`,
+        );
+        return;
+      }
+      const data = await response.json();
+      photoMessageId = data?.result?.message_id;
+      if (photoMessageId) {
+        await saveTelegramMessageId(recipe.id, photoMessageId);
+        console.log(`Telegram photo sent, id=${photoMessageId}`);
+      }
     } else {
-      response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
+      const response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
           text: caption,
           parse_mode: "HTML",
-          disable_web_page_preview: false,
         }),
       });
-    }
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Telegram send failed: ${response.status} ${errorText}`);
-    } else {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `Telegram sendMessage failed: ${response.status} ${errorText}`,
+        );
+        return;
+      }
       const data = await response.json();
-      const messageId = data?.result?.message_id;
-      if (messageId) {
-        await saveTelegramMessageId(recipe.id, messageId);
-        console.log(`Telegram message sent, id=${messageId}`);
+      photoMessageId = data?.result?.message_id;
+      if (photoMessageId) {
+        await saveTelegramMessageId(recipe.id, photoMessageId);
+      }
+    }
+
+    // Send full description as a reply to the photo/message
+    if (recipe.description && photoMessageId) {
+      const fullText = formatDescriptionForTelegram(recipe.description);
+      if (fullText) {
+        const textResp = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: fullText,
+            parse_mode: "HTML",
+            reply_to_message_id: photoMessageId,
+          }),
+        });
+        if (!textResp.ok) {
+          const errorText = await textResp.text();
+          console.error(
+            `Telegram description reply failed: ${textResp.status} ${errorText}`,
+          );
+        } else {
+          const textData = await textResp.json();
+          const textMsgId = textData?.result?.message_id;
+          if (textMsgId) {
+            await saveTelegramTextMessageId(recipe.id, textMsgId);
+            console.log(`Telegram description sent, id=${textMsgId}`);
+          }
+        }
       }
     }
   } catch (error) {
@@ -403,18 +509,14 @@ async function editTelegramRecipePost(recipe) {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-  const description = safeText(recipe.description || "");
-  const shortDescription =
-    description.length > 400 ? `${description.slice(0, 400)}...` : description;
-
   const caption =
     `<b>${safeText(recipe.title)}</b>\n` +
     `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
-    `${shortDescription}\n\n` +
-    `<a href="${SITE_URL}">Наш сайт</a>`;
+    `<a href="${SITE_URL}">🌐 Наш сайт</a>`;
 
   try {
-    const response = await fetch(`${TELEGRAM_BASE_URL}/editMessageCaption`, {
+    // Edit photo caption
+    const captionResp = await fetch(`${TELEGRAM_BASE_URL}/editMessageCaption`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -424,11 +526,60 @@ async function editTelegramRecipePost(recipe) {
         parse_mode: "HTML",
       }),
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Telegram edit failed: ${response.status} ${errorText}`);
+    if (!captionResp.ok) {
+      const errorText = await captionResp.text();
+      console.error(
+        `Telegram editCaption failed: ${captionResp.status} ${errorText}`,
+      );
     } else {
-      console.log(`Telegram message edited, id=${messageId}`);
+      console.log(`Telegram caption edited, id=${messageId}`);
+    }
+
+    // Edit or send description text message
+    if (recipe.description) {
+      const fullText = formatDescriptionForTelegram(recipe.description);
+      if (fullText) {
+        const textMessageId = await getTelegramTextMessageId(recipe.id);
+        if (textMessageId) {
+          const editResp = await fetch(`${TELEGRAM_BASE_URL}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              message_id: textMessageId,
+              text: fullText,
+              parse_mode: "HTML",
+            }),
+          });
+          if (!editResp.ok) {
+            const errorText = await editResp.text();
+            console.error(
+              `Telegram editText failed: ${editResp.status} ${errorText}`,
+            );
+          } else {
+            console.log(`Telegram description edited, id=${textMessageId}`);
+          }
+        } else {
+          // No text message yet — send as reply
+          const textResp = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              text: fullText,
+              parse_mode: "HTML",
+              reply_to_message_id: messageId,
+            }),
+          });
+          if (textResp.ok) {
+            const textData = await textResp.json();
+            const newTextMsgId = textData?.result?.message_id;
+            if (newTextMsgId) {
+              await saveTelegramTextMessageId(recipe.id, newTextMsgId);
+            }
+          }
+        }
+      }
     }
   } catch (error) {
     console.error("Telegram edit error:", error);
@@ -441,20 +592,30 @@ async function deleteTelegramRecipePost(recipeId) {
   const messageId = await getTelegramMessageId(recipeId);
   if (!messageId) return;
 
-  try {
+  const deleteMessage = async (msgId) => {
     const response = await fetch(`${TELEGRAM_BASE_URL}/deleteMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
-        message_id: messageId,
+        message_id: msgId,
       }),
     });
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Telegram delete failed: ${response.status} ${errorText}`);
+      console.error(
+        `Telegram delete failed (id=${msgId}): ${response.status} ${errorText}`,
+      );
     } else {
-      console.log(`Telegram message deleted, id=${messageId}`);
+      console.log(`Telegram message deleted, id=${msgId}`);
+    }
+  };
+
+  try {
+    await deleteMessage(messageId);
+    const textMessageId = await getTelegramTextMessageId(recipeId);
+    if (textMessageId) {
+      await deleteMessage(textMessageId);
     }
   } catch (error) {
     console.error("Telegram delete error:", error);
