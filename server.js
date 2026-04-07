@@ -388,6 +388,27 @@ function formatDescriptionForTelegram(description) {
   return text.length > 4000 ? text.slice(0, 4000) + "..." : text;
 }
 
+function buildTelegramMultipart(fields, imageBuffer, mimeType) {
+  const boundary = "TGBoundary" + Date.now();
+  const parts = [];
+  for (const [name, value] of Object.entries(fields)) {
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      ),
+    );
+  }
+  const ext = mimeType.split("/")[1] || "jpg";
+  parts.push(
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="photo.${ext}"\r\nContent-Type: ${mimeType}\r\n\r\n`,
+    ),
+    imageBuffer,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  );
+  return { body: Buffer.concat(parts), boundary };
+}
+
 async function sendTelegramRecipePost(recipe) {
   if (!TELEGRAM_BASE_URL || !TELEGRAM_CHAT_ID) {
     console.log("Telegram not configured: missing token or chat_id");
@@ -405,19 +426,19 @@ async function sendTelegramRecipePost(recipe) {
     `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
     `<a href="${SITE_URL}">🌐 Наш сайт</a>`;
 
-  const imageUrl =
-    recipe.image && recipe.image.startsWith("http") ? recipe.image : null;
+  const isHttpImage = recipe.image && recipe.image.startsWith("http");
+  const isBase64Image = recipe.image && recipe.image.startsWith("data:");
 
   try {
     let photoMessageId = null;
 
-    if (imageUrl) {
+    if (isHttpImage) {
       const response = await fetch(`${TELEGRAM_BASE_URL}/sendPhoto`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          photo: imageUrl,
+          photo: recipe.image,
           caption,
           parse_mode: "HTML",
         }),
@@ -434,6 +455,39 @@ async function sendTelegramRecipePost(recipe) {
       if (photoMessageId) {
         await saveTelegramMessageId(recipe.id, photoMessageId);
         console.log(`Telegram photo sent, id=${photoMessageId}`);
+      }
+    } else if (isBase64Image) {
+      const match = recipe.image.match(/^data:([^;]+);base64,(.+)$/s);
+      if (!match) {
+        console.error("Invalid base64 image format for recipe:", recipe.id);
+        return;
+      }
+      const mimeType = match[1];
+      const imageBuffer = Buffer.from(match[2], "base64");
+      const { body, boundary } = buildTelegramMultipart(
+        { chat_id: TELEGRAM_CHAT_ID, caption, parse_mode: "HTML" },
+        imageBuffer,
+        mimeType,
+      );
+      const response = await fetch(`${TELEGRAM_BASE_URL}/sendPhoto`, {
+        method: "POST",
+        headers: {
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+        body,
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `Telegram sendPhoto (base64) failed: ${response.status} ${errorText}`,
+        );
+        return;
+      }
+      const data = await response.json();
+      photoMessageId = data?.result?.message_id;
+      if (photoMessageId) {
+        await saveTelegramMessageId(recipe.id, photoMessageId);
+        console.log(`Telegram photo (base64) sent, id=${photoMessageId}`);
       }
     } else {
       const response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
