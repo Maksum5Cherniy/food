@@ -870,6 +870,54 @@ initStorage().then(() => {
       }
       return;
     }
+
+    // Перепостити всі рецепти в Telegram: GET /api/repost-all?secret=foodvolt2026
+    if (req.method === "GET" && req.url.startsWith("/api/repost-all")) {
+      const { query } = url.parse(req.url, true);
+      if (query.secret !== "foodvolt2026") {
+        sendResponse(
+          res,
+          403,
+          JSON.stringify({ error: "Forbidden" }),
+          "application/json",
+        );
+        return;
+      }
+      try {
+        const recipes = await readRecipes();
+        let posted = 0;
+        for (const recipe of recipes) {
+          // Видалити старі повідомлення
+          await deleteTelegramRecipePost(recipe.id);
+          // Скинути збережені ID
+          if (recipesCol) {
+            await recipesCol.updateOne(
+              { id: recipe.id },
+              { $unset: { telegramMessageId: "", telegramTextMessageId: "" } },
+            );
+          }
+          // Надіслати заново з повним описом
+          await sendTelegramRecipePost(recipe);
+          posted++;
+          // Пауза між постами щоб не перевищити ліміт Telegram API
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        sendResponse(
+          res,
+          200,
+          JSON.stringify({ ok: true, posted }),
+          "application/json",
+        );
+      } catch (e) {
+        sendResponse(
+          res,
+          500,
+          JSON.stringify({ error: e.message }),
+          "application/json",
+        );
+      }
+      return;
+    }
     if (req.url.startsWith("/api/recipes")) {
       handleApi(req, res);
       return;
