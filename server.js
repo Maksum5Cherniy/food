@@ -678,7 +678,37 @@ initStorage().then(() => {
   cron.schedule("0 19 * * *", postDailyFact, { timezone: "Europe/Kyiv" });
   console.log("Daily fact scheduler started (09:00 and 19:00 Kyiv time)");
 
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
+    // Ручний тригер факту: GET /api/post-fact?secret=foodvolt2026
+    if (req.method === "GET" && req.url.startsWith("/api/post-fact")) {
+      const { query } = url.parse(req.url, true);
+      if (query.secret !== "foodvolt2026") {
+        sendResponse(
+          res,
+          403,
+          JSON.stringify({ error: "Forbidden" }),
+          "application/json",
+        );
+        return;
+      }
+      try {
+        await postDailyFact();
+        sendResponse(
+          res,
+          200,
+          JSON.stringify({ ok: true, message: "Fact posted!" }),
+          "application/json",
+        );
+      } catch (e) {
+        sendResponse(
+          res,
+          500,
+          JSON.stringify({ error: e.message }),
+          "application/json",
+        );
+      }
+      return;
+    }
     if (req.url.startsWith("/api/recipes")) {
       handleApi(req, res);
       return;
