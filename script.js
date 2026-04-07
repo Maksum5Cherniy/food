@@ -222,7 +222,7 @@ function renderRecipes() {
 
     const meta = document.createElement("div");
     meta.className = "recipe-meta";
-    meta.innerHTML = `<span>Час: ${escapeHtml(recipe.time)}</span>`;
+    meta.innerHTML = `<span>Час приготування: ${escapeHtml(recipe.time)}</span>`;
 
     card.append(image, content, meta);
     recipeList.appendChild(card);
