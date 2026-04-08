@@ -67,8 +67,8 @@ button, input, textarea {
 }
 
 .logo svg {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.55rem;
+  height: 1.55rem;
   display: block;
 }
 
@@ -92,18 +92,20 @@ button, input, textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.55rem;
+  height: 2.55rem;
   border-radius: 50%;
   background: #2AABEE;
   color: white;
   text-decoration: none;
+  box-shadow: 0 10px 24px rgba(42, 171, 238, 0.22);
+  overflow: hidden;
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .tg-header-btn svg {
-  width: 1.32rem;
-  height: 1.32rem;
+  width: 1.08rem;
+  height: 1.08rem;
   display: block;
 }
 
