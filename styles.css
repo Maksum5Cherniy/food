@@ -67,7 +67,7 @@ button, input, textarea {
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: linear-gradient(160deg, #ffbc82, #ff8f4c);
+  background: linear-gradient(145deg, #555 0%, #1e1e1e 100%);
   color: white;
   flex-shrink: 0;
 }
