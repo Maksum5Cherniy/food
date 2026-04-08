@@ -182,8 +182,49 @@ function formatDescriptionHTML(text) {
   return html;
 }
 
+function injectSchemaOrg(recipeList) {
+  const existing = document.getElementById("schema-org-recipes");
+  if (existing) existing.remove();
+
+  const items = recipeList.map((r) => {
+    const imageUrl =
+      r.image && r.image.startsWith("http")
+        ? r.image
+        : "https://food-volt.pp.ua/icon.avif";
+    const timeMatch = r.time && r.time.match(/\d+/);
+    const minutes = timeMatch ? parseInt(timeMatch[0]) : null;
+    return {
+      "@type": "Recipe",
+      name: r.title,
+      description: r.description
+        ? r.description.replace(/\n/g, " ").slice(0, 300)
+        : "",
+      image: imageUrl,
+      url: "https://food-volt.pp.ua/",
+      inLanguage: "uk",
+      recipeCategory: "Українська кухня",
+      ...(minutes
+        ? { totalTime: `PT${minutes}M`, cookTime: `PT${minutes}M` }
+        : {}),
+      recipeIngredient: [],
+    };
+  });
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@graph": items,
+  };
+
+  const script = document.createElement("script");
+  script.id = "schema-org-recipes";
+  script.type = "application/ld+json";
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+}
+
 function renderRecipes() {
   recipeList.innerHTML = "";
+  injectSchemaOrg(recipes);
   recipes.forEach((recipe) => {
     const card = document.createElement("article");
     card.className = "recipe-card";

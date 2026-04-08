@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://food-volt.pp.ua/sitemap.xml
