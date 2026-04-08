@@ -182,6 +182,54 @@ function formatDescriptionHTML(text) {
   return html;
 }
 
+function parseSchemaIngredients(description) {
+  if (!description) return [];
+  const lines = description.split("\n");
+  const ingredients = [];
+  let inSection = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(Інгредієнти|Тісто|Начинка|Соус|Крем)[:.]?\s*$/i.test(trimmed)) {
+      inSection = true;
+      continue;
+    }
+    if (
+      /^(Приготування|Спосіб приготування|Глазур|Декор|Подача)[:.]?\s*$/i.test(
+        trimmed,
+      )
+    ) {
+      inSection = false;
+    }
+    if (inSection && /^[-•–\d]/.test(trimmed)) {
+      ingredients.push(
+        trimmed.replace(/^[-•–]\s*/, "").replace(/^\d+[.)]\s*/, ""),
+      );
+    }
+  }
+  return ingredients;
+}
+
+function parseSchemaInstructions(description) {
+  if (!description) return [];
+  const lines = description.split("\n");
+  const steps = [];
+  let inSection = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(Приготування|Спосіб приготування)[:.]?\s*$/i.test(trimmed)) {
+      inSection = true;
+      continue;
+    }
+    if (inSection && /^\d+[.)]\s/.test(trimmed)) {
+      steps.push({
+        "@type": "HowToStep",
+        text: trimmed.replace(/^\d+[.)]\s*/, ""),
+      });
+    }
+  }
+  return steps;
+}
+
 function injectSchemaOrg(recipeList) {
   const existing = document.getElementById("schema-org-recipes");
   if (existing) existing.remove();
@@ -193,6 +241,8 @@ function injectSchemaOrg(recipeList) {
         : "https://food-volt.pp.ua/icon.avif";
     const timeMatch = r.time && r.time.match(/\d+/);
     const minutes = timeMatch ? parseInt(timeMatch[0]) : null;
+    const ingredients = parseSchemaIngredients(r.description);
+    const instructions = parseSchemaInstructions(r.description);
     return {
       "@type": "Recipe",
       name: r.title,
@@ -203,10 +253,13 @@ function injectSchemaOrg(recipeList) {
       url: "https://food-volt.pp.ua/",
       inLanguage: "uk",
       recipeCategory: "Українська кухня",
+      recipeCuisine: "Українська",
+      author: { "@type": "Organization", name: "Рецепти на всі випадки" },
       ...(minutes
         ? { totalTime: `PT${minutes}M`, cookTime: `PT${minutes}M` }
         : {}),
-      recipeIngredient: [],
+      ...(ingredients.length ? { recipeIngredient: ingredients } : {}),
+      ...(instructions.length ? { recipeInstructions: instructions } : {}),
     };
   });
 
