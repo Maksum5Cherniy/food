@@ -17,9 +17,8 @@ const TELEGRAM_BASE_URL = TELEGRAM_BOT_TOKEN
   ? `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
   : null;
 const SITE_URL =
-  process.env.SITE_URL ||
-  process.env.PUBLIC_URL ||
-  "https://food-sgk6.onrender.com";
+  process.env.SITE_URL || process.env.PUBLIC_URL || "https://food-volt.pp.ua";
+const TELEGRAM_CHANNEL_URL = "https://t.me/food_volt";
 
 const MIME_TYPES = {
   ".html": "text/html",
@@ -424,7 +423,7 @@ async function sendTelegramRecipePost(recipe) {
   const caption =
     `<b>${safeText(recipe.title)}</b>\n` +
     `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
-    `<a href="${SITE_URL}">🌐 Наш сайт</a>`;
+    `<a href="${SITE_URL}">🌐 Наш сайт</a> | <a href="${TELEGRAM_CHANNEL_URL}">📢 Telegram канал</a>`;
 
   const isHttpImage = recipe.image && recipe.image.startsWith("http");
   const isBase64Image = recipe.image && recipe.image.startsWith("data:");
@@ -566,7 +565,7 @@ async function editTelegramRecipePost(recipe) {
   const caption =
     `<b>${safeText(recipe.title)}</b>\n` +
     `<b>Час приготування:</b> ${safeText(recipe.time)}\n\n` +
-    `<a href="${SITE_URL}">🌐 Наш сайт</a>`;
+    `<a href="${SITE_URL}">🌐 Наш сайт</a> | <a href="${TELEGRAM_CHANNEL_URL}">📢 Telegram канал</a>`;
 
   try {
     // Edit photo caption
@@ -863,7 +862,7 @@ initStorage().then(() => {
     const text =
       `${fact.emoji} <b>${fact.title}</b>\n\n` +
       `${fact.text}\n\n` +
-      `<a href="${SITE_URL}">🍽 Наш сайт з рецептами</a>`;
+      `<a href="${SITE_URL}">🍽 Наш сайт з рецептами</a> | <a href="${TELEGRAM_CHANNEL_URL}">📢 Telegram канал</a>`;
     try {
       const response = await fetch(`${TELEGRAM_BASE_URL}/sendMessage`, {
         method: "POST",
