@@ -63,7 +63,13 @@ button, input, textarea {
   border-radius: 50%;
   background: linear-gradient(160deg, #ffbc82, #ff8f4c);
   color: white;
-  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.logo svg {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: block;
 }
 
 .site-header h1,
@@ -93,6 +99,12 @@ button, input, textarea {
   color: white;
   text-decoration: none;
   transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.tg-header-btn svg {
+  width: 1.32rem;
+  height: 1.32rem;
+  display: block;
 }
 
 .tg-header-btn:hover {
