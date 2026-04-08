@@ -1,4 +1,4 @@
-const CACHE_NAME = "recipe-site-v3";
+const CACHE_NAME = "recipe-site-v5";
 const ASSETS = ["/index.html", "/styles.css", "/script.js", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
