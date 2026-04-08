@@ -238,7 +238,7 @@ function injectSchemaOrg(recipeList) {
     const imageUrl =
       r.image && r.image.startsWith("http")
         ? r.image
-        : "https://food-volt.pp.ua/icon.avif";
+        : "https://www.food-volt.pp.ua/icon.avif";
     const timeMatch = r.time && r.time.match(/\d+/);
     const minutes = timeMatch ? parseInt(timeMatch[0]) : null;
     const ingredients = parseSchemaIngredients(r.description);
@@ -250,7 +250,7 @@ function injectSchemaOrg(recipeList) {
         ? r.description.replace(/\n/g, " ").slice(0, 300)
         : "",
       image: imageUrl,
-      url: "https://food-volt.pp.ua/",
+      url: "https://www.food-volt.pp.ua/",
       inLanguage: "uk",
       recipeCategory: "Українська кухня",
       recipeCuisine: "Українська",

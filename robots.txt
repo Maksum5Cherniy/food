@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://food-volt.pp.ua/sitemap.xml
+Sitemap: https://www.food-volt.pp.ua/sitemap-index.xml
+Sitemap: https://www.food-volt.pp.ua/sitemap.xml
